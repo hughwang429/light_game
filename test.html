@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>點燈遊戲解法工具</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    table { border-collapse: collapse; margin: auto; }
+    td {
+      width: 40px; height: 40px;
+      border: 1px solid #aaa;
+      cursor: pointer;
+      font-size: 20px;
+      background-color: #eee;
+    }
+    td.on { background-color: #007bff; color: white; }
+    td.off { background-color: #222; color: white; }
+    .output { margin-top: 20px; white-space: pre-wrap; text-align: left; max-width: 400px; margin-inline: auto; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h1>🔦 點燈遊戲解法工具</h1>
+  <p>點擊格子切換 0/1，然後按「求解」找到全亮的點擊步驟。</p>
+  <table id="grid"></table>
+  <button onclick="solve()">求解</button>
+  <div class="output" id="output"></div>
+
+  <script>
+    const size = 5;
+    const grid = Array.from({ length: size }, () => Array(size).fill(0));
+
+    const table = document.getElementById("grid");
+    for (let i = 0; i < size; i++) {
+      const row = table.insertRow();
+      for (let j = 0; j < size; j++) {
+        const cell = row.insertCell();
+        cell.className = "off";
+        cell.onclick = () => {
+          grid[i][j] ^= 1;
+          cell.className = grid[i][j] ? "on" : "off";
+          cell.textContent = grid[i][j];
+        };
+      }
+    }
+
+    function toggle(grid, x, y) {
+      const dx = [0, 1, -1, 0, 0];
+      const dy = [0, 0, 0, 1, -1];
+      for (let d = 0; d < 5; d++) {
+        const nx = x + dx[d], ny = y + dy[d];
+        if (nx >= 0 && nx < size && ny >= 0 && ny < size)
+          grid[nx][ny] ^= 1;
+      }
+    }
+
+    function solve() {
+      const A = [], b = [];
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          const row = Array(25).fill(0);
+          const idx = i * 5 + j;
+          row[idx] = 1;
+          if (i > 0) row[(i - 1) * 5 + j] = 1;
+          if (i < 4) row[(i + 1) * 5 + j] = 1;
+          if (j > 0) row[i * 5 + (j - 1)] = 1;
+          if (j < 4) row[i * 5 + (j + 1)] = 1;
+          A.push(row);
+          b.push(grid[i][j] ^ 1);
+        }
+      }
+
+      // Gaussian Elimination mod 2
+      const mat = A.map((row, i) => [...row, b[i]]);
+      for (let i = 0; i < 25; i++) {
+        let pivot = i;
+        while (pivot < 25 && mat[pivot][i] === 0) pivot++;
+        if (pivot === 25) continue;
+        [mat[i], mat[pivot]] = [mat[pivot], mat[i]];
+        for (let j = 0; j < 25; j++) {
+          if (i !== j && mat[j][i]) {
+            for (let k = 0; k <= 25; k++) {
+              mat[j][k] ^= mat[i][k];
+            }
+          }
+        }
+      }
+
+      const x = mat.map(row => row[25]);
+      let out = "✅ 請點以下格子 (從 1 開始計)：\n";
+      for (let i = 0; i < 25; i++) {
+        if (x[i]) {
+          const r = Math.floor(i / 5) + 1;
+          const c = (i % 5) + 1;
+          out += `👉 (${r}, ${c})\n`;
+        }
+      }
+
+      if (!x.some(v => v)) out = "已經全部亮燈，不需要點擊。";
+      document.getElementById("output").textContent = out;
+    }
+  </script>
+</body>
+</html>
